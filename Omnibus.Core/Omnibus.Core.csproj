@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Markdig" Version="0.15.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="2.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="2.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="2.0.2" />
+    <PackageReference Include="Wyam.Common" Version="1.4.1" />
+    <PackageReference Include="Wyam.Core" Version="1.4.1" />
+    <PackageReference Include="Wyam.GitHub" Version="1.4.1" />
+    <PackageReference Include="Wyam.Html" Version="1.4.1" />
+    <PackageReference Include="Wyam.Markdown" Version="1.4.1" />
+    <PackageReference Include="Wyam.Yaml" Version="1.4.1" />
+  </ItemGroup>
+
+</Project>
