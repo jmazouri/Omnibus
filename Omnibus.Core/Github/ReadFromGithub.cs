@@ -51,40 +51,37 @@ namespace Omnibus.Core.Github
             _httpClient.Dispose();
         }
 
+        IEnumerable<Task<(RepositoryContent file, string content)>> GetDocs(string owner, string name, string path)
+        {
+            var results = _cli.Repository.Content.GetAllContents(owner, name, path).GetAwaiter().GetResult();
+
+            foreach (var file in results)
+            {
+                if (file.Type.Value == ContentType.Dir)
+                {
+                    GetDocs(owner, name, file.Path);
+                    continue;
+                }
+
+                yield return GetReponse(file);
+            }
+        }
+
         public IEnumerable<IDocument> Execute(IReadOnlyList<IDocument> inputs, IExecutionContext context)
         {
-            var tasks = new List<Task<(RepositoryContent file, string content)>>();
-
-            void GetDocsRecursive(string owner, string name, string path)
-            {
-                var results = _cli.Repository.Content.GetAllContents(owner, name, path).GetAwaiter().GetResult();
-
-                foreach (var file in results)
-                {
-                    if (file.Type.Value == ContentType.Dir)
-                    {
-                        GetDocsRecursive(owner, name, file.Path);
-                        continue;
-                    }
-
-                    tasks.Add(GetReponse(file));
-                }
-            }
-
-            foreach (var (owner, name) in _repos)
-            {
-                GetDocsRecursive(owner, name, "/");
-            }
+            var tasks = _repos.SelectMany(d => GetDocs(d.Account, d.RepoName, "/"));
 
             Task.WhenAll(tasks).Wait();
 
             var (faulted, succeeded) = tasks.Partition(d => d.IsFaulted);
 
             var result = succeeded
-                .Select(d => d.Result)
-                .AsParallel().Select(response =>
+                .AsParallel()
+                .Select(task =>
                 {
-                    string repoPath = response.file.HtmlUrl;
+                    var (file, content) = task.Result;
+
+                    string repoPath = file.HtmlUrl;
 
                     int start = repoPath.IndexOf(".com/") + 5;
                     int end = repoPath.IndexOf("/blob") - start;
@@ -93,12 +90,12 @@ namespace Omnibus.Core.Github
 
                     var dict = new Dictionary<string, object>
                         {
-                            { Keys.RelativeFilePath, Path.Combine(repoPath, response.file.Path) }
+                            { Keys.RelativeFilePath, Path.Combine(repoPath, file.Path) }
                         };
 
-                    Trace.Verbose("Read file {0}", response.file.DownloadUrl);
+                    Trace.Verbose("Read file {0}", file.DownloadUrl);
 
-                    return context.GetDocument(response.file.DownloadUrl, new MemoryStream(Encoding.UTF8.GetBytes(response.content), false), dict);
+                    return context.GetDocument(file.DownloadUrl, new MemoryStream(Encoding.UTF8.GetBytes(content), false), dict);
                 });
 
             foreach (var failed in faulted)
